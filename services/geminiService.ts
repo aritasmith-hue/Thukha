@@ -24,7 +24,7 @@ const fileToGenerativePart = async (file: File) => {
   };
 };
 
-export const generateReport = async (files: UploadedFile[]): Promise<string> => {
+export const generateReport = async (files: UploadedFile[], history?: string): Promise<string> => {
   if (!process.env.API_KEY) {
     throw new Error("API_KEY environment variable not set.");
   }
@@ -34,9 +34,16 @@ export const generateReport = async (files: UploadedFile[]): Promise<string> => 
     files.map(uploadedFile => fileToGenerativePart(uploadedFile.file))
   );
 
-  // FIX: Use systemInstruction for the main prompt and provide a concise user prompt with the images.
+  const userPromptParts = [
+      { text: "Please generate a GP Consultation & Diagnostic Report based on the attached patient documents, following the specified workflow." }
+  ];
+
+  if (history) {
+    userPromptParts.push({ text: `\n\n--- PATIENT HISTORY SUMMARY ---\n${history}\n--- END HISTORY ---` });
+  }
+
   const contentParts = [
-    { text: "Please generate a GP Consultation & Diagnostic Report based on the attached patient documents, following the specified workflow." },
+    ...userPromptParts,
     ...imageParts
   ];
   

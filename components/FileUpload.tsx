@@ -40,7 +40,8 @@ export const FileUpload: React.FC<FileUploadProps> = ({ files: uploadedFiles, on
   const handleFileChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files) {
-      const newFiles = Array.from(files).map(file => ({
+      // FIX: Explicitly type `file` as `File` to resolve typing errors.
+      const newFiles = Array.from(files).map((file: File) => ({
         id: `${file.name}-${file.lastModified}`,
         file,
         preview: URL.createObjectURL(file)
@@ -86,7 +87,8 @@ export const FileUpload: React.FC<FileUploadProps> = ({ files: uploadedFiles, on
     
     const files = e.dataTransfer.files;
      if (files && files.length > 0) {
-      const newFiles = Array.from(files).map(file => ({
+      // FIX: Explicitly type `file` as `File` to resolve typing errors.
+      const newFiles = Array.from(files).map((file: File) => ({
         id: `${file.name}-${file.lastModified}`,
         file,
         preview: URL.createObjectURL(file)

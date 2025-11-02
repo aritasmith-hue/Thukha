@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { exportReportAsDocx } from '../services/docxService';
-import { DownloadIcon, EditIcon, SaveIcon, CancelIcon, PillIcon, PrintIcon } from './icons';
+import { DownloadIcon, EditIcon, SaveIcon, CancelIcon, PillIcon, PrintIcon, NewIcon } from './icons';
 import { PRESET_MEDICATIONS } from '../constants';
 import { Medication } from '../types';
+import { AddMedicationModal } from './AddMedicationModal';
 
 
 interface ReportDisplayProps {
@@ -17,12 +18,22 @@ const parsePatientId = (markdown: string): string => {
   return match ? match[1] : `TMC_Report_${new Date().toISOString().split('T')[0]}`;
 };
 
-const MedicationPresets: React.FC<{ onAdd: (med: Medication) => void; disabled: boolean }> = ({ onAdd, disabled }) => (
+const MedicationPresets: React.FC<{ onAdd: (med: Medication) => void; disabled: boolean, onCustomClick: () => void }> = ({ onAdd, disabled, onCustomClick }) => (
     <div className="mb-4 p-4 bg-teal-50/70 rounded-lg border border-teal-200/50">
-        <h3 className="text-sm font-semibold text-teal-800 flex items-center space-x-2 mb-3">
-            <PillIcon className="h-5 w-5" />
-            <span>Add Medication Presets</span>
-        </h3>
+        <div className="flex justify-between items-center mb-3">
+            <h3 className="text-sm font-semibold text-teal-800 flex items-center space-x-2">
+                <PillIcon className="h-5 w-5" />
+                <span>Add Medication</span>
+            </h3>
+            <button
+                onClick={onCustomClick}
+                disabled={disabled}
+                className="px-3 py-1 text-xs font-medium text-teal-700 bg-white border border-teal-300 rounded-full hover:bg-teal-100 transition-colors flex items-center gap-1 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
+            >
+                <NewIcon className="h-4 w-4" />
+                <span>Custom</span>
+            </button>
+        </div>
         <div className="flex flex-wrap gap-2">
             {PRESET_MEDICATIONS.map(med => (
                 <button
@@ -42,6 +53,7 @@ const MedicationPresets: React.FC<{ onAdd: (med: Medication) => void; disabled: 
 export const ReportDisplay: React.FC<ReportDisplayProps> = ({ reportMarkdown, isLoading, onReportChange, onAddMedication }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedMarkdown, setEditedMarkdown] = useState(reportMarkdown);
+  const [isMedicationModalOpen, setIsMedicationModalOpen] = useState(false);
 
   React.useEffect(() => {
     setEditedMarkdown(reportMarkdown);
@@ -276,12 +288,17 @@ export const ReportDisplay: React.FC<ReportDisplayProps> = ({ reportMarkdown, is
       </div>
       
       {!isLoading && !isEditing && (
-        <MedicationPresets onAdd={onAddMedication} disabled={isLoading || isEditing} />
+        <MedicationPresets onAdd={onAddMedication} disabled={isLoading || isEditing} onCustomClick={() => setIsMedicationModalOpen(true)} />
       )}
 
       <div className="prose prose-sm max-w-none report-content-wrapper overflow-y-auto max-h-[70vh]">
         {Content}
       </div>
+       <AddMedicationModal 
+        isOpen={isMedicationModalOpen}
+        onClose={() => setIsMedicationModalOpen(false)}
+        onAddMedication={onAddMedication}
+      />
     </div>
   );
 };

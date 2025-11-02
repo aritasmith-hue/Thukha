@@ -1,15 +1,20 @@
 import React, { useState, useCallback } from 'react';
 import { UploadedFile, Medication } from './types';
 import { generateReport } from './services/geminiService';
+import { saveReport, getHistory } from './services/historyService';
 import { FileUpload } from './components/FileUpload';
 import { ReportDisplay } from './components/ReportDisplay';
-import { LogoIcon, NewIcon } from './components/icons';
+import { LoadHistoryModal } from './components/LoadHistoryModal';
+import { PatientHistoryDisplay } from './components/PatientHistoryDisplay';
+import { LogoIcon, NewIcon, HistoryIcon } from './components/icons';
 
 const App: React.FC = () => {
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [report, setReport] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
+  const [patientHistory, setPatientHistory] = useState<string>('');
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState<boolean>(false);
 
   const handleFilesChange = useCallback((newFiles: UploadedFile[]) => {
     setFiles(newFiles);
@@ -27,15 +32,22 @@ const App: React.FC = () => {
     setReport('');
 
     try {
-      const generatedReport = await generateReport(files);
+      const generatedReport = await generateReport(files, patientHistory);
       setReport(generatedReport);
+      
+      // Auto-save the report to history
+      const patientIdMatch = generatedReport.match(/Patient ID:\s*([^\s\n]+)/);
+      if (patientIdMatch && patientIdMatch[1]) {
+        saveReport(patientIdMatch[1], generatedReport);
+      }
+
     } catch (e) {
       console.error(e);
       setError(e instanceof Error ? `Failed to generate report: ${e.message}` : 'An unknown error occurred.');
     } finally {
       setIsLoading(false);
     }
-  }, [files]);
+  }, [files, patientHistory]);
   
   const handleNewPatient = useCallback(() => {
     // Revoke object URLs to prevent memory leaks
@@ -43,12 +55,32 @@ const App: React.FC = () => {
     setFiles([]);
     setReport('');
     setError('');
+    setPatientHistory('');
   }, [files]);
 
   const handleReportChange = useCallback((newReport: string) => {
     setReport(newReport);
   }, []);
   
+  const handleLoadHistory = useCallback(async (patientId: string) => {
+    if (!patientId) return;
+    setIsLoading(true);
+    try {
+      const history = await getHistory(patientId);
+      if (history) {
+        setPatientHistory(history);
+      } else {
+        alert(`No history found for Patient ID: ${patientId}`);
+      }
+    } catch (e) {
+      console.error(e);
+      setError("Failed to load patient history.");
+    } finally {
+      setIsHistoryModalOpen(false);
+      setIsLoading(false);
+    }
+  }, []);
+
   const handleAddMedication = useCallback((med: Medication) => {
     const newMedRow = `| ${med.name} | ${med.strength} | ${med.frequency} | ${med.duration} | ${med.purpose} |`;
     const tableHeaderAndSeparator = `| Drug Name | Strength/Dose | Frequency | Duration | Purpose/Notes |\n|---|---|---|---|---|`;
@@ -103,6 +135,7 @@ const App: React.FC = () => {
 
 
   return (
+    <>
     <div className="min-h-screen bg-teal-50/50 font-sans text-gray-800">
       <header className="bg-white shadow-md">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
@@ -119,10 +152,20 @@ const App: React.FC = () => {
       <main className="container mx-auto p-4 md:p-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 lg:gap-8">
           
-          <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-200/80">
-            <h2 className="text-2xl font-semibold text-gray-700 border-b pb-3 mb-4">Upload Patient Documents</h2>
-            <p className="text-gray-600 mb-6">Upload patient documents, ECGs, X-rays, ultrasounds, or lab reports to begin analysis.</p>
-            <FileUpload files={files} onFilesChange={handleFilesChange} />
+          <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-200/80 flex flex-col">
+            <div>
+              <h2 className="text-2xl font-semibold text-gray-700 border-b pb-3 mb-4">Upload Patient Documents</h2>
+              <p className="text-gray-600 mb-6">Upload patient documents, ECGs, X-rays, ultrasounds, or lab reports to begin analysis.</p>
+              <FileUpload files={files} onFilesChange={handleFilesChange} />
+            </div>
+            
+            {patientHistory && (
+              <PatientHistoryDisplay 
+                history={patientHistory} 
+                onClear={() => setPatientHistory('')}
+              />
+            )}
+
             <div className="mt-6 flex flex-col sm:flex-row gap-3">
               <button
                 onClick={handleGenerateReport}
@@ -139,6 +182,15 @@ const App: React.FC = () => {
                 )}
                 {isLoading && <span>Processing...</span>}
               </button>
+               <button
+                  onClick={() => setIsHistoryModalOpen(true)}
+                  disabled={isLoading}
+                  className="w-full sm:w-auto bg-blue-50 border border-blue-300 text-blue-700 font-bold py-3 px-4 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-4 focus:ring-blue-500/50 transition-all duration-300 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+                  title="Load past reports for a patient"
+                >
+                  <HistoryIcon className="h-5 w-5" />
+                  <span>Load History</span>
+                </button>
                <button
                 onClick={handleNewPatient}
                 disabled={isLoading && files.length === 0}
@@ -167,6 +219,12 @@ const App: React.FC = () => {
           <p>© Thukha Medical Center (Advanced Natural Health Care Center) – Yangon, Myanmar</p>
       </footer>
     </div>
+    <LoadHistoryModal 
+      isOpen={isHistoryModalOpen}
+      onClose={() => setIsHistoryModalOpen(false)}
+      onLoad={handleLoadHistory}
+    />
+    </>
   );
 };
 
