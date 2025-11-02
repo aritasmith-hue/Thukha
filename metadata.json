@@ -1,0 +1,5 @@
+{
+  "name": "Thukha Medical Center AI Diagnostic Assistant",
+  "description": "An AI-powered assistant to process patient documents (ECGs, X-rays, lab reports) and generate standardized GP Consultation & Diagnostic Reports for Thukha Medical Center.",
+  "requestFramePermissions": []
+}
